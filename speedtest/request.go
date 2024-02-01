@@ -8,6 +8,7 @@ import (
 	"math"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -98,10 +99,18 @@ func (s *Server) downloadTestContext(ctx context.Context, downloadRequest downlo
 		dbg.Println("Download test disabled")
 		return nil
 	}
+
+	dlSize := dlSizes[3]
+	if s.Context.config.DlSize > 0 && slices.Contains(dlSizes[:], s.Context.config.DlSize) {
+		dlSize = s.Context.config.DlSize
+	} else {
+		dbg.Printf("Invalid download size: %d. Using default size: %d.\n", s.Context.config.DlSize, dlSize)
+	}
+
 	start := time.Now()
 	_context, cancel := context.WithCancel(ctx)
 	s.Context.RegisterDownloadHandler(func() {
-		_ = downloadRequest(_context, s, 3)
+		_ = downloadRequest(_context, s, dlSize)
 	}).Start(cancel, 0)
 	duration := time.Since(start)
 	s.DLSpeed = s.Context.GetAvgDownloadRate()
@@ -125,10 +134,18 @@ func (s *Server) uploadTestContext(ctx context.Context, uploadRequest uploadFunc
 		dbg.Println("Upload test disabled")
 		return nil
 	}
+
+	ulSize := ulSizes[4]
+	if s.Context.config.UlSize > 0 && slices.Contains(ulSizes[:], s.Context.config.UlSize) {
+		ulSize = s.Context.config.UlSize
+	} else {
+		dbg.Printf("Invalid upload size: %d. Using default size: %d.\n", s.Context.config.UlSize, ulSize)
+	}
+
 	start := time.Now()
 	_context, cancel := context.WithCancel(ctx)
 	s.Context.RegisterUploadHandler(func() {
-		_ = uploadRequest(_context, s, 4)
+		_ = uploadRequest(_context, s, ulSize)
 	}).Start(cancel, 0)
 	duration := time.Since(start)
 	s.ULSpeed = s.Context.GetAvgUploadRate()
@@ -137,8 +154,7 @@ func (s *Server) uploadTestContext(ctx context.Context, uploadRequest uploadFunc
 	return nil
 }
 
-func downloadRequest(ctx context.Context, s *Server, w int) error {
-	size := dlSizes[w]
+func downloadRequest(ctx context.Context, s *Server, size int) error {
 	xdlURL := strings.Split(s.URL, "/upload.php")[0] + "/random" + strconv.Itoa(size) + "x" + strconv.Itoa(size) + ".jpg"
 	dbg.Printf("XdlURL: %s\n", xdlURL)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, xdlURL, nil)
@@ -154,8 +170,7 @@ func downloadRequest(ctx context.Context, s *Server, w int) error {
 	return s.Context.NewChunk().DownloadHandler(resp.Body)
 }
 
-func uploadRequest(ctx context.Context, s *Server, w int) error {
-	size := ulSizes[w]
+func uploadRequest(ctx context.Context, s *Server, size int) error {
 	dc := s.Context.NewChunk().UploadHandler(int64(size*100-51) * 10)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.URL, dc)
 	req.ContentLength = dc.(*DataChunk).ContentLength

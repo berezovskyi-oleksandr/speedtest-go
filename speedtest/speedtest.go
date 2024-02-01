@@ -52,6 +52,9 @@ type UserConfig struct {
 
 	NoDownload bool
 	NoUpload   bool
+
+	DlSize int
+	UlSize int
 }
 
 func parseAddr(addr string) (string, string) {
