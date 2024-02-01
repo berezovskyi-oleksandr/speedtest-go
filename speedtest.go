@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"gopkg.in/alecthomas/kingpin.v2"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"gopkg.in/alecthomas/kingpin.v2"
 
 	"github.com/showwin/speedtest-go/speedtest"
 )
@@ -30,6 +31,8 @@ var (
 	noUpload     = kingpin.Flag("no-upload", "Disable upload test.").Bool()
 	pingMode     = kingpin.Flag("ping-mode", "Select a method for Ping. (support icmp/tcp/http)").Default("http").String()
 	debug        = kingpin.Flag("debug", "Enable debug mode.").Short('d').Bool()
+	dlSize       = kingpin.Flag("dl-size", "Set download chunk size.").Default("1000").Int()
+	ulSize       = kingpin.Flag("ul-size", "Set upload chunk size.").Default("800").Int()
 )
 
 func main() {
@@ -52,6 +55,8 @@ func main() {
 			Keyword:      *search,
 			NoDownload:   *noDownload,
 			NoUpload:     *noUpload,
+			DlSize:       *dlSize,
+			UlSize:       *ulSize,
 		}))
 	speedtestClient.SetNThread(*thread)
 

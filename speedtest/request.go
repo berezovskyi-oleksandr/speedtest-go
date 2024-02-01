@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/showwin/speedtest-go/speedtest/tcp"
 	"math"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/showwin/speedtest-go/speedtest/tcp"
 )
 
 type (
@@ -46,7 +47,7 @@ func (s *Server) MultiDownloadTestContext(ctx context.Context, servers Servers) 
 		sp := server
 		dbg.Printf("Register Download Handler: %s\n", sp.URL)
 		fp = server.Context.RegisterDownloadHandler(func() {
-			_ = downloadRequest(_context, sp, 3)
+			_ = downloadRequest(_context, sp, s.Context.config.DlSize)
 		})
 	}
 	fp.Start(cancel, mainIDIndex) // block here
@@ -73,7 +74,7 @@ func (s *Server) MultiUploadTestContext(ctx context.Context, servers Servers) er
 		sp := server
 		dbg.Printf("Register Upload Handler: %s\n", sp.URL)
 		fp = server.Context.RegisterUploadHandler(func() {
-			_ = uploadRequest(_context, sp, 3)
+			_ = uploadRequest(_context, sp, s.Context.config.UlSize)
 		})
 	}
 	fp.Start(cancel, mainIDIndex) // block here
@@ -99,7 +100,7 @@ func (s *Server) downloadTestContext(ctx context.Context, downloadRequest downlo
 	start := time.Now()
 	_context, cancel := context.WithCancel(ctx)
 	s.Context.RegisterDownloadHandler(func() {
-		_ = downloadRequest(_context, s, 3)
+		_ = downloadRequest(_context, s, s.Context.config.DlSize)
 	}).Start(cancel, 0)
 	duration := time.Since(start)
 	s.DLSpeed = s.Context.GetAvgDownloadRate()
@@ -126,7 +127,7 @@ func (s *Server) uploadTestContext(ctx context.Context, uploadRequest uploadFunc
 	start := time.Now()
 	_context, cancel := context.WithCancel(ctx)
 	s.Context.RegisterUploadHandler(func() {
-		_ = uploadRequest(_context, s, 4)
+		_ = uploadRequest(_context, s, s.Context.config.UlSize)
 	}).Start(cancel, 0)
 	duration := time.Since(start)
 	s.ULSpeed = s.Context.GetAvgUploadRate()
@@ -135,8 +136,7 @@ func (s *Server) uploadTestContext(ctx context.Context, uploadRequest uploadFunc
 	return nil
 }
 
-func downloadRequest(ctx context.Context, s *Server, w int) error {
-	size := dlSizes[w]
+func downloadRequest(ctx context.Context, s *Server, size int) error {
 	xdlURL := strings.Split(s.URL, "/upload.php")[0] + "/random" + strconv.Itoa(size) + "x" + strconv.Itoa(size) + ".jpg"
 	dbg.Printf("XdlURL: %s\n", xdlURL)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, xdlURL, nil)
@@ -152,8 +152,7 @@ func downloadRequest(ctx context.Context, s *Server, w int) error {
 	return s.Context.NewChunk().DownloadHandler(resp.Body)
 }
 
-func uploadRequest(ctx context.Context, s *Server, w int) error {
-	size := ulSizes[w]
+func uploadRequest(ctx context.Context, s *Server, size int) error {
 	dc := s.Context.NewChunk().UploadHandler(int64(size*100-51) * 10)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.URL, dc)
 	req.ContentLength = dc.(*DataChunk).ContentLength
